@@ -1,0 +1,47 @@
+# ============================================================
+# WORKFLOW 3: PR DESCRIPTION GENERATOR
+# ============================================================
+#
+# WHAT THIS DOES:
+# When a PR is opened with an empty or minimal description,
+# the AI reads the diff and auto-generates a detailed,
+# structured description with summary, change list, and
+# testing checklist.
+#
+# TRIGGER: pull_request opened
+# ============================================================
+
+name: "📝 Auto PR Description"
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  generate-description:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run PR Description Generator
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node scripts/pr-description-generator.js
