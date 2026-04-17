@@ -46,7 +46,7 @@ addRoute("GET", "/users/:id", (req, res) => {
   if (!user) {
     // If user does not exist, return 404 with error message
     res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ success: false, error: `User with ID ${id} not found` }));
+    res.end(JSON.stringify({ success: false, error: "User not found" }));
   } else {
     // If user exists, return 200 with user data
     res.writeHead(200, { "Content-Type": "application/json" });
