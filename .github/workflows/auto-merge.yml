@@ -1,0 +1,85 @@
+# ============================================================
+# WORKFLOW 4: AUTO-MERGE AGENT
+# ============================================================
+#
+# WHAT THIS DOES:
+# When all CI checks pass on a PR, this evaluates whether
+# the PR is safe to auto-merge (Dependabot updates, docs-only
+# changes, etc.) and merges it automatically if it qualifies.
+#
+# TRIGGER: check_suite completed (all CI checks finished)
+# ============================================================
+
+name: "🔀 Auto-Merge Safe PRs"
+
+# -----------------------------------------------------------
+# TRIGGER: When a check suite completes.
+#
+# A "check suite" is the group of all CI checks on a commit.
+# This fires after ALL checks finish (pass or fail).
+# We only proceed if the conclusion is "success".
+# -----------------------------------------------------------
+on:
+  check_suite:
+    types: [completed]
+
+jobs:
+  auto-merge:
+    # Only run when all checks passed
+    if: github.event.check_suite.conclusion == 'success'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      checks: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      # -----------------------------------------------------------
+      # Find PRs associated with this check suite.
+      #
+      # A check suite runs on a commit. We need to find which PR
+      # (if any) is associated with that commit. GitHub's API
+      # lets us look up PRs by head SHA.
+      # -----------------------------------------------------------
+      - name: Find associated Pull Requests
+        id: find-prs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Find PRs whose head commit matches the check suite's commit
+            const pulls = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${context.payload.check_suite.head_branch}`,
+            });
+
+            if (pulls.data.length > 0) {
+              // Return the first matching PR number
+              core.setOutput('pr_number', pulls.data[0].number);
+              core.setOutput('found', 'true');
+            } else {
+              core.setOutput('found', 'false');
+            }
+
+      - name: Run Auto-Merge Agent
+        if: steps.find-prs.outputs.found == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.find-prs.outputs.pr_number }}
+        run: node scripts/auto-merge.js
