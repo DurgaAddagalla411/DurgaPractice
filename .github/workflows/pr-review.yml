@@ -1,0 +1,70 @@
+# ============================================================
+# WORKFLOW 2: AI PR REVIEW AGENT
+# ============================================================
+#
+# WHAT THIS DOES:
+# Automatically reviews every Pull Request when it's opened
+# or updated. The AI reads the diff and posts a detailed code
+# review with inline comments, severity levels, and a verdict.
+#
+# HOW TO USE:
+# Just open a PR — the review happens automatically!
+#
+# TRIGGER: pull_request opened or synchronized (new commits pushed)
+# ============================================================
+
+name: "🔍 AI PR Review"
+
+# -----------------------------------------------------------
+# TRIGGER: When a PR is opened or gets new commits.
+#
+# - opened: First time the PR is created
+# - synchronize: New commits pushed to the PR branch
+#
+# We review on both events so the AI catches issues in
+# follow-up commits, not just the initial code.
+# -----------------------------------------------------------
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+
+    # -----------------------------------------------------------
+    # PERMISSIONS:
+    # - pull-requests: write → post review comments
+    # - contents: read → read the diff and files
+    # - issues: write → add labels
+    # -----------------------------------------------------------
+    permissions:
+      pull-requests: write
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      # -----------------------------------------------------------
+      # Run the PR Review Agent.
+      #
+      # PR_NUMBER comes from the pull_request event payload.
+      # ${{ github.event.pull_request.number }} is the PR number.
+      # -----------------------------------------------------------
+      - name: Run AI PR Review Agent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node scripts/pr-reviewer.js
