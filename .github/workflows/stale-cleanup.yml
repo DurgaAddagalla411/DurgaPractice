@@ -1,0 +1,60 @@
+# ============================================================
+# WORKFLOW 5: STALE PR CLEANUP (Scheduled)
+# ============================================================
+#
+# WHAT THIS DOES:
+# Runs daily at 9am UTC and scans all open PRs for staleness.
+# Warns authors of aging PRs, labels them as stale, and
+# auto-closes PRs that have been abandoned.
+#
+# TRIGGER: Daily cron schedule + manual dispatch
+# ============================================================
+
+name: "🧹 Stale PR Cleanup"
+
+on:
+  # -----------------------------------------------------------
+  # CRON TRIGGER: Runs every day at 9:00 AM UTC.
+  #
+  # Cron syntax: minute hour day-of-month month day-of-week
+  # "0 9 * * *" = at 09:00, every day
+  #
+  # You can change this to weekly with: "0 9 * * 1" (Mondays)
+  # -----------------------------------------------------------
+  schedule:
+    - cron: "0 9 * * *"
+
+  # -----------------------------------------------------------
+  # MANUAL TRIGGER: Allows running this from the GitHub UI.
+  #
+  # Go to Actions tab → "Stale PR Cleanup" → "Run workflow"
+  # Useful for testing or running cleanup on-demand.
+  # -----------------------------------------------------------
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Stale PR Cleanup Agent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/stale-pr-cleanup.js
