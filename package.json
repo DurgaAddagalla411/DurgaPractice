@@ -1,0 +1,23 @@
+{
+  "name": "github-agents",
+  "version": "1.0.0",
+  "description": "AI-powered GitHub Agents for PR automation - auto-create, auto-review, auto-merge, and more",
+  "main": "scripts/issue-to-pr.js",
+  "type": "module",
+  "scripts": {
+    "issue-to-pr": "node scripts/issue-to-pr.js",
+    "review-pr": "node scripts/pr-reviewer.js",
+    "generate-description": "node scripts/pr-description-generator.js",
+    "stale-cleanup": "node scripts/stale-pr-cleanup.js",
+    "start": "node src/app.js",
+    "test": "node --test src/**/*.test.js"
+  },
+  "dependencies": {
+    "groq-sdk": "^0.8.0",
+    "@octokit/rest": "^21.0.0",
+    "@octokit/webhooks-types": "^7.5.0"
+  },
+  "devDependencies": {},
+  "keywords": ["github", "agents", "ai", "pr-automation", "groq"],
+  "license": "MIT"
+}
