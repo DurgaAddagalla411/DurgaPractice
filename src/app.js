@@ -43,8 +43,11 @@ addRoute("GET", "/users", (req, res) => {
 addRoute("GET", "/users/:id", (req, res) => {
   const id = parseInt(req.params.id);
   const user = users.find((u) => u.id === id);
-  // BUG: If user is not found, this sends `undefined` as JSON
-  // which results in an empty response — no error message.
+  if (!user) {
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: false, error: "User not found" }));
+    return;
+  }
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ success: true, data: user }));
 });
@@ -63,6 +66,34 @@ addRoute("POST", "/users", (req, res) => {
     users.push(newUser);
     res.writeHead(201, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ success: true, data: newUser }));
+  });
+});
+
+// -----------------------------------------------------------
+// ROUTE: PUT /users/:id — Update a user by ID
+// -----------------------------------------------------------
+addRoute("PUT", "/users/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const user = users.find((u) => u.id === id);
+  if (!user) {
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: false, error: "User not found" }));
+    return;
+  }
+  let body = "";
+  req.on("data", (chunk) => (body += chunk));
+  req.on("end", () => {
+    const updates = JSON.parse(body);
+    if (!updates.name && !updates.email && !updates.role) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: false, error: "No valid fields provided" }));
+      return;
+    }
+    if (updates.name) user.name = updates.name;
+    if (updates.email) user.email = updates.email;
+    if (updates.role) user.role = updates.role;
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: true, data: user }));
   });
 });
 
@@ -150,6 +181,7 @@ server.listen(PORT, () => {
   console.log("  GET    /users");
   console.log("  GET    /users/:id");
   console.log("  POST   /users");
+  console.log("  PUT    /users/:id");
   console.log("  DELETE /users/:id");
 });
 
