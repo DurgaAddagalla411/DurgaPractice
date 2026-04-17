@@ -216,11 +216,26 @@ reviewBody += `---\n🤖 *Review by AI PR Review Agent using Claude*`;
 // -----------------------------------------------------------
 console.log("📝 Posting review on GitHub...");
 
-await submitReview({
-  prNumber,
-  body: reviewBody,
-  event: review.verdict,
-});
+// GitHub does not allow REQUEST_CHANGES or APPROVE on your own PR.
+// If that happens, fall back to COMMENT so the review still posts.
+try {
+  await submitReview({
+    prNumber,
+    body: reviewBody,
+    event: review.verdict,
+  });
+} catch (error) {
+  if (error.status === 422) {
+    console.log("   ⚠️ Cannot submit verdict on own PR — falling back to COMMENT");
+    await submitReview({
+      prNumber,
+      body: reviewBody,
+      event: "COMMENT",
+    });
+  } else {
+    throw error;
+  }
+}
 
 // Add labels based on risk level
 const labels = ["ai-reviewed"];
