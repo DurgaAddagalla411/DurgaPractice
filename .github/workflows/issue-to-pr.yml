@@ -1,105 +1,43 @@
 # ============================================================
 # WORKFLOW 1: ISSUE → PR AGENT
 # ============================================================
-#
-# WHAT THIS DOES:
-# When someone adds the "ai-fix" label to a GitHub issue,
-# this workflow triggers the Issue-to-PR Agent, which reads
-# the issue, generates a code fix with Claude AI, and opens
-# a Pull Request automatically.
-#
-# HOW TO USE:
-# 1. Create a GitHub issue describing a bug or feature
-# 2. Add the label "ai-fix" to the issue
-# 3. This workflow triggers automatically
-# 4. Wait ~1 minute — a PR will appear!
-#
-# TRIGGER: issue labeled with "ai-fix"
+# TRIGGER: Issue labeled with "ai-fix"
+# ACTION: Runs the Python agent that reads the issue,
+#         generates a fix with AI, and opens a PR.
 # ============================================================
 
 name: "🤖 Issue → PR Agent"
 
-# -----------------------------------------------------------
-# TRIGGER: When an issue gets labeled.
-#
-# We use `issues.labeled` instead of `issues.opened` because:
-# - Not every issue should trigger AI code generation
-# - Adding a label is an explicit human decision
-# - You can review the issue first, then label it when ready
-# -----------------------------------------------------------
 on:
   issues:
     types: [labeled]
 
 jobs:
   create-pr-from-issue:
-    # -----------------------------------------------------------
-    # CONDITION: Only run when the "ai-fix" label is added.
-    #
-    # This prevents the workflow from running when other labels
-    # (like "bug" or "enhancement") are added.
-    # -----------------------------------------------------------
     if: github.event.label.name == 'ai-fix'
-
     runs-on: ubuntu-latest
 
-    # -----------------------------------------------------------
-    # PERMISSIONS: The workflow needs these to:
-    # - contents: write  → create branches and commit files
-    # - pull-requests: write → create and label PRs
-    # - issues: write → post comments on issues
-    # -----------------------------------------------------------
     permissions:
       contents: write
       pull-requests: write
       issues: write
 
     steps:
-      # -----------------------------------------------------------
-      # STEP 1: Check out the repository code.
-      #
-      # This gives our script access to the repo files so the
-      # GitHub API can read source code and create branches.
-      # -----------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -----------------------------------------------------------
-      # STEP 2: Set up Node.js runtime.
-      #
-      # Our agent scripts are written in Node.js, so we need
-      # the runtime installed in the GitHub Actions runner.
-      # -----------------------------------------------------------
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          node-version: "20"
+          python-version: "3.12"
 
-      # -----------------------------------------------------------
-      # STEP 3: Install dependencies.
-      #
-      # Installs @anthropic-ai/sdk and @octokit/rest from
-      # package.json so our scripts can import them.
-      # -----------------------------------------------------------
       - name: Install dependencies
-        run: npm install
+        run: pip install -r requirements.txt
 
-      # -----------------------------------------------------------
-      # STEP 4: Run the Issue-to-PR Agent.
-      #
-      # Environment variables:
-      # - GITHUB_TOKEN: Automatically provided by GitHub Actions.
-      #   This is a temporary token scoped to this workflow run.
-      # - GITHUB_REPOSITORY: Automatically set to "owner/repo".
-      # - ANTHROPIC_API_KEY: Your Claude API key, stored as a
-      #   GitHub secret (Settings → Secrets → Actions).
-      # - ISSUE_NUMBER: Extracted from the webhook event payload.
-      #   ${{ github.event.issue.number }} is the issue that was labeled.
-      # -----------------------------------------------------------
       - name: Run Issue-to-PR Agent
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: node scripts/issue-to-pr.js
+        run: python scripts/issue_to_pr.py
