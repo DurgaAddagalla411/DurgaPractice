@@ -294,11 +294,15 @@ class MemoryManager:
         self,
         issue_number: int,
         title: str,
+        body: str,
         pr_number: int,
         branch_name: str,
         files_changed: list,
     ):
-        """Record that an issue has been processed into a PR."""
+        """
+        Record that an issue has been processed into a PR.
+        Also saves to vector memory so duplicate detection works for future issues.
+        """
         self.issue_memory[str(issue_number)] = {
             "title": title,
             "pr_number": pr_number,
@@ -306,6 +310,55 @@ class MemoryManager:
             "files_changed": files_changed,
             "processed_at": _now_iso(),
         }
+
+        _save_json(ISSUE_MEMORY_PATH, self.issue_memory)
+
+        # Also embed in vector memory so future issues can detect duplicates
+        if self.vector_memory:
+            self.vector_memory.add_issue(
+                issue_number=issue_number,
+                title=title,
+                body=body,
+                resolved_in_pr=pr_number,
+            )
+
+    # =========================================================
+    # DUPLICATE ISSUE DETECTION — Used by Issue-to-PR agent
+    # =========================================================
+
+    def find_similar_issues(
+        self,
+        title: str,
+        body: str = "",
+        top_k: int = 3,
+        min_similarity: float = 0.85,
+        exclude_issue: Optional[int] = None,
+    ) -> list:
+        """
+        Find past issues semantically similar to a new one.
+
+        Used by Issue-to-PR agent to detect duplicates before doing
+        expensive code analysis.
+
+        Returns [] if vector memory isn't enabled.
+
+        Threshold 0.85 = "very likely a duplicate"
+        Lower it (e.g., 0.70) to find loosely related issues.
+        """
+        if not self.vector_memory:
+            return []
+
+        results = self.vector_memory.find_similar_issues(
+            title=title,
+            body=body,
+            top_k=top_k + (1 if exclude_issue else 0),
+            min_similarity=min_similarity,
+        )
+
+        if exclude_issue:
+            results = [r for r in results if r["issue_number"] != exclude_issue]
+
+        return results[:top_k]
 
         _save_json(ISSUE_MEMORY_PATH, self.issue_memory)
 
