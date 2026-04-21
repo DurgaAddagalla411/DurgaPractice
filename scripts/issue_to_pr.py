@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from lib.logger import create_logger
 from lib.ai_client import ask_ai_json
+from lib.memory_manager import MemoryManager
 from lib.github_client import (
     get_issue,
     get_file_content,
@@ -69,6 +70,87 @@ log.info(f"Title: {issue.title}")
 log.info(f"Labels: {', '.join(labels) or 'none'}")
 log.info(f"Author: {issue.user.login}")
 log.debug(f"Body length: {len(issue.body or '')} chars")
+
+# -----------------------------------------------------------
+# STEP 1.5: DUPLICATE DETECTION — Check agentic memory FIRST
+#
+# Before doing any expensive work (reading codebase, calling AI),
+# check if this issue is semantically similar to one we've already
+# processed. If yes, skip and point to the existing PR.
+#
+# This saves 100% of tokens on duplicate issues.
+# -----------------------------------------------------------
+log.section("STEP 2: Checking for Duplicate Issues (Agentic Memory)")
+
+memory = MemoryManager()
+stats = memory.stats()
+log.info(f"Memory loaded — {stats.get('issues_embedded', 0)} past issues in vector DB")
+
+similar_issues = memory.find_similar_issues(
+    title=issue.title,
+    body=issue.body or "",
+    top_k=3,
+    min_similarity=0.85,  # 85% threshold = "very likely duplicate"
+    exclude_issue=issue_number,
+)
+
+if similar_issues:
+    top = similar_issues[0]
+    log.warn(
+        f"DUPLICATE DETECTED — Issue #{top['issue_number']} is "
+        f"{top['similarity']*100:.0f}% similar"
+    )
+    log.info(f"  Original title: {top['title']}")
+    if top.get("resolved_in_pr"):
+        log.info(f"  Resolved in PR: #{top['resolved_in_pr']}")
+
+    # Build comment referencing the original
+    duplicate_comment = (
+        f"🤖 **Agentic Memory — Duplicate Detected**\n\n"
+        f"This issue is **{top['similarity']*100:.0f}% semantically similar** to "
+        f"an issue I've already processed.\n\n"
+    )
+
+    if top.get("resolved_in_pr"):
+        duplicate_comment += (
+            f"**Original issue:** #{top['issue_number']} — *{top['title']}*\n"
+            f"**Resolved in PR:** #{top['resolved_in_pr']}\n\n"
+            f"Please check the existing PR before filing a new fix. "
+            f"If you believe this is genuinely different, remove the "
+            f"`ai-fix` label and add it back after editing the description.\n\n"
+        )
+    else:
+        duplicate_comment += (
+            f"**Original issue:** #{top['issue_number']} — *{top['title']}*\n\n"
+        )
+
+    # Show other matches too
+    if len(similar_issues) > 1:
+        duplicate_comment += "**Other similar issues:**\n"
+        for s in similar_issues[1:]:
+            duplicate_comment += (
+                f"- #{s['issue_number']} ({s['similarity']*100:.0f}% match) — "
+                f"{s['title']}\n"
+            )
+
+    duplicate_comment += (
+        f"\n---\n"
+        f"*🧠 No AI tokens spent — this decision came from vector memory "
+        f"(~{stats.get('issues_embedded', 0)} past issues indexed).*"
+    )
+
+    add_comment(issue_number, duplicate_comment)
+    add_labels(issue_number, ["duplicate", "ai-memory-hit"])
+
+    log.summary("Issue-to-PR Agent — SKIPPED (duplicate)", {
+        "Issue": f"#{issue_number} — {issue.title}",
+        "Duplicate of": f"#{top['issue_number']} ({top['similarity']*100:.0f}%)",
+        "Tokens saved": "100%",
+        "Memory source": "vector semantic search",
+    })
+    sys.exit(0)
+
+log.success("No duplicate found — proceeding with full analysis")
 
 # -----------------------------------------------------------
 # STEP 3: Read the repository's source code
@@ -211,6 +293,27 @@ add_comment(
     f"**What I changed:**\n{changes_list}\n\n"
     f"Please review the PR and let me know if any adjustments are needed.",
 )
+
+# -----------------------------------------------------------
+# STEP 9: Save issue to agentic memory
+#
+# Store this issue in vector memory so that future duplicate
+# issues can be detected and skipped (saving tokens and
+# preventing redundant PRs).
+# -----------------------------------------------------------
+log.section("STEP 7: Saving Issue to Agentic Memory")
+
+memory.save_issue_analysis(
+    issue_number=issue_number,
+    title=issue.title,
+    body=issue.body or "",
+    pr_number=pr["number"],
+    branch_name=branch_name,
+    files_changed=[c["file"] for c in ai_response["changes"]],
+)
+
+log.success(f"Issue #{issue_number} embedded in vector memory")
+log.info("Future duplicate issues will be detected automatically")
 
 # -----------------------------------------------------------
 # DONE
