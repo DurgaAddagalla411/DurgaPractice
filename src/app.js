@@ -38,20 +38,28 @@ addRoute("GET", "/users", (req, res) => {
 
 // -----------------------------------------------------------
 // ROUTE: GET /users/:id — Return a single user by ID
-// (intentional bug: no 404 handling when user not found)
 // -----------------------------------------------------------
 addRoute("GET", "/users/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  const user = users.find((u) => u.id === id);
-  // BUG: If user is not found, this sends `undefined` as JSON
-  // which results in an empty response — no error message.
+  const id = req.params.id;
+  // Check if the ID is a number
+  if (isNaN(parseInt(id))) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: false, error: "ID must be a number" }));
+    return;
+  }
+  const userId = parseInt(id);
+  const user = users.find((u) => u.id === userId);
+  if (!user) {
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: false, error: "User not found" }));
+    return;
+  }
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ success: true, data: user }));
 });
 
 // -----------------------------------------------------------
 // ROUTE: POST /users — Create a new user
-// (intentional gap: no input validation)
 // -----------------------------------------------------------
 addRoute("POST", "/users", (req, res) => {
   let body = "";
@@ -70,8 +78,15 @@ addRoute("POST", "/users", (req, res) => {
 // ROUTE: DELETE /users/:id — Delete a user by ID
 // -----------------------------------------------------------
 addRoute("DELETE", "/users/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  const index = users.findIndex((u) => u.id === id);
+  const id = req.params.id;
+  // Check if the ID is a number
+  if (isNaN(parseInt(id))) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: false, error: "ID must be a number" }));
+    return;
+  }
+  const userId = parseInt(id);
+  const index = users.findIndex((u) => u.id === userId);
   if (index === -1) {
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ success: false, error: "User not found" }));
