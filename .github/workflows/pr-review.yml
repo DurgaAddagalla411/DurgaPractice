@@ -1,29 +1,16 @@
 # ============================================================
-# WORKFLOW 2: AI PR REVIEW AGENT
+# WORKFLOW 2: AI PR REVIEW AGENT (with Agentic Memory)
 # ============================================================
+# TRIGGER: PR opened or updated (new commits pushed)
+# ACTION: AI reviews PR using memory of past reviews (semantic)
 #
-# WHAT THIS DOES:
-# Automatically reviews every Pull Request when it's opened
-# or updated. The AI reads the diff and posts a detailed code
-# review with inline comments, severity levels, and a verdict.
-#
-# HOW TO USE:
-# Just open a PR — the review happens automatically!
-#
-# TRIGGER: pull_request opened or synchronized (new commits pushed)
+# KEY FEATURE: After each run, the memory/ folder is committed
+# back to main so the next run starts with the updated memory.
+# This makes the agent's memory persistent across runs.
 # ============================================================
 
 name: "🔍 AI PR Review"
 
-# -----------------------------------------------------------
-# TRIGGER: When a PR is opened or gets new commits.
-#
-# - opened: First time the PR is created
-# - synchronize: New commits pushed to the PR branch
-#
-# We review on both events so the AI catches issues in
-# follow-up commits, not just the initial code.
-# -----------------------------------------------------------
 on:
   pull_request:
     types: [opened, synchronize]
@@ -32,39 +19,52 @@ jobs:
   ai-review:
     runs-on: ubuntu-latest
 
-    # -----------------------------------------------------------
-    # PERMISSIONS:
-    # - pull-requests: write → post review comments
-    # - contents: read → read the diff and files
-    # - issues: write → add labels
-    # -----------------------------------------------------------
     permissions:
       pull-requests: write
-      contents: read
+      contents: write    # Needed to commit memory/ back to main
       issues: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (main branch for memory)
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          ref: main       # Pull latest memory from main
+          fetch-depth: 0  # Needed to push back later
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip + model downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/huggingface
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
 
       - name: Install dependencies
-        run: npm install
+        run: pip install -r requirements.txt
 
-      # -----------------------------------------------------------
-      # Run the PR Review Agent.
-      #
-      # PR_NUMBER comes from the pull_request event payload.
-      # ${{ github.event.pull_request.number }} is the PR number.
-      # -----------------------------------------------------------
       - name: Run AI PR Review Agent
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: node scripts/pr-reviewer.js
+        run: python scripts/pr_reviewer.py
+
+      - name: Commit updated memory back to main
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add memory/ || true
+          # Only commit if there are actual changes
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(memory): update after PR #${{ github.event.pull_request.number }} review"
+            git push origin main
+          else
+            echo "No memory changes to commit."
+          fi
