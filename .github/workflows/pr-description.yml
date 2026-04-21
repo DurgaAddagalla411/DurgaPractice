@@ -37,5 +37,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: llama-3.1-8b-instant  # smaller model, uses fewer tokens
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python scripts/pr_description_generator.py
