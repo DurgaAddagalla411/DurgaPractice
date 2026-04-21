@@ -36,7 +36,10 @@ jobs:
 
       - name: Run Issue-to-PR Agent
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use PAT (if provided) so the PR is attributed to a user and
+          # other workflows (pr-review, pr-description) will trigger on it.
+          # Fall back to GITHUB_TOKEN if no PAT secret is configured.
+          GITHUB_TOKEN: ${{ secrets.AGENT_PAT || secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
