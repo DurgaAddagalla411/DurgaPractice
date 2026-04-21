@@ -1,0 +1,14 @@
+# ============================================================
+# PYTHON DEPENDENCIES for GitHub Agents
+# ============================================================
+# Install with: pip install -r requirements.txt
+# ============================================================
+
+# Core — AI + GitHub
+groq==0.18.0              # Groq AI SDK — talks to Llama 3.3 70B
+PyGithub==2.3.0           # GitHub API SDK — create PRs, comments, branches
+python-dotenv==1.0.1      # Loads .env file for local development
+
+# Memory — Semantic similarity (Phase 2: Vector DB)
+chromadb>=1.0.0           # Vector DB for semantic PR/issue similarity
+sentence-transformers>=3.0.0  # Embedding model (runs locally, free)
