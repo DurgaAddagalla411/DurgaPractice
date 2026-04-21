@@ -43,7 +43,7 @@ addRoute("GET", "/users/:id", (req, res) => {
   const id = parseInt(req.params.id);
   const user = users.find((u) => u.id === id);
   if (!user) {
-    // Changed to return a 404 error message with the user ID
+    // If user is not found, send a 404 error with a message
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ success: false, error: `User with id ${id} not found` }));
   } else {
