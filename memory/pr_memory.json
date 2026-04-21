@@ -1,0 +1,46 @@
+{
+  "2": {
+    "title": "fix: Return 404 for non-existent users",
+    "author": "DurgaAddagalla411",
+    "verdict": "APPROVE",
+    "summary": "This PR fixes the issue where the API returns a 200 status code with undefined data when requesting a non-existent user. It builds on past reviews by addressing the issue reported in #1 and provides a more robust and accurate API response. The changes are well-structured and easy to follow.",
+    "files_touched": [
+      "src/app.js"
+    ],
+    "related_to_prs": [],
+    "risk_level": "low",
+    "reviewed_at": "2026-04-21T06:32:48.456529+00:00",
+    "head_sha": "82aefd60dd976a5c7e14079eec3a8ae36b02ecb4"
+  },
+  "6": {
+    "title": "fix: Improve error message for /users/:id route",
+    "author": "DurgaAddagalla411",
+    "verdict": "APPROVE",
+    "summary": "This PR improves the error message for the GET /users/:id route by including the user ID when the user is not found, building on past reviews that addressed similar issues. The changes are incremental and focused on enhancing the API response. The code is well-structured and easy to follow.",
+    "files_touched": [
+      "src/app.js"
+    ],
+    "related_to_prs": [
+      2
+    ],
+    "risk_level": "low",
+    "reviewed_at": "2026-04-21T06:35:33.043740+00:00",
+    "head_sha": "f56abc20815a57bb43a737b080bea4eb1ea729c8"
+  },
+  "8": {
+    "title": "fix: Return 404 error when user not found",
+    "author": "DurgaAddagalla411",
+    "verdict": "APPROVE",
+    "summary": "This PR fixes an issue where the `GET /users/:id` endpoint did not return a 404 error when a user was not found, building on past reviews that addressed similar issues. The changes are incremental and focused on enhancing the API response. The code is well-structured and easy to follow.",
+    "files_touched": [
+      "src/app.js"
+    ],
+    "related_to_prs": [
+      2,
+      6
+    ],
+    "risk_level": "low",
+    "reviewed_at": "2026-04-21T06:49:25.855936+00:00",
+    "head_sha": "75b40e8e655ce5df2b50d206f98cbfa3ef45b5c5"
+  }
+}
