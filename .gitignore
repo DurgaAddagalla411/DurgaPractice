@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+__pycache__/
+*.pyc
 
 # Environment secrets — NEVER commit these
 .env
@@ -14,4 +16,16 @@ Thumbs.db
 .idea/
 
 # Logs
+logs/
 *.log
+
+# ============================================================
+# MEMORY: We DO commit memory/ to git so it persists across
+# GitHub Actions runs. The agents' "memory" = what's in here.
+# See memory/README.md for details.
+# ============================================================
+# But exclude the large SQLite transaction logs that change
+# every run (keep the DB, skip the noisy write-ahead logs)
+memory/chroma/*.sqlite3-journal
+memory/chroma/*.sqlite3-wal
+memory/chroma/*.sqlite3-shm
