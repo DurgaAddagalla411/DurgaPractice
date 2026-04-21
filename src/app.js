@@ -86,8 +86,9 @@ addRoute("DELETE", "/users/:id", (req, res) => {
 // ROUTE: GET /health — Health check endpoint
 // -----------------------------------------------------------
 addRoute("GET", "/health", (req, res) => {
+  // Added uptime field to the response
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ status: "ok", uptime: process.uptime() }));
+  res.end(JSON.stringify({ status: "ok", uptime: Math.floor(process.uptime()) }));
 });
 
 // -----------------------------------------------------------
