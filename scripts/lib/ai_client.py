@@ -135,12 +135,77 @@ def ask_ai_json(system_prompt: str, user_message: str, **options) -> dict:
     cleaned = re.sub(r"\n?```\s*$", "", cleaned)
     cleaned = cleaned.strip()
 
+    # Smaller LLMs often emit raw newlines/tabs inside string values
+    # (valid code, but invalid JSON). Strict JSON parser rejects these.
+    # We try strict first, then fall back to lenient parsing that
+    # allows control chars inside strings.
     try:
         parsed = json.loads(cleaned)
         log.success("JSON response parsed successfully")
-        log.debug(f"JSON keys: {', '.join(parsed.keys()) if isinstance(parsed, dict) else 'array'}")
-        return parsed
-    except json.JSONDecodeError as error:
-        log.error("Failed to parse AI response as JSON")
-        log.error(f"Raw response: {text[:200]}...")
-        raise ValueError(f"AI returned invalid JSON: {error}")
+    except json.JSONDecodeError:
+        log.warn("Strict JSON parse failed — retrying with lenient mode")
+        try:
+            # strict=False allows \n, \t, etc. inside string values
+            parsed = json.loads(cleaned, strict=False)
+            log.success("JSON parsed with lenient mode")
+        except json.JSONDecodeError as error:
+            # Last resort: escape raw control chars within string values
+            # and try again. This handles models that emit literal bytes.
+            log.warn("Lenient parse failed — escaping control chars and retrying")
+            try:
+                escaped = _escape_control_chars_in_strings(cleaned)
+                parsed = json.loads(escaped, strict=False)
+                log.success("JSON parsed after escaping control chars")
+            except json.JSONDecodeError as final_err:
+                log.error("Failed to parse AI response as JSON")
+                log.error(f"Raw response (first 300 chars): {text[:300]}")
+                raise ValueError(f"AI returned invalid JSON: {final_err}")
+
+    log.debug(f"JSON keys: {', '.join(parsed.keys()) if isinstance(parsed, dict) else 'array'}")
+    return parsed
+
+
+def _escape_control_chars_in_strings(text: str) -> str:
+    """
+    Walk through the JSON text and replace raw control characters
+    (newlines, tabs, carriage returns) that appear inside string values
+    with their escaped equivalents (\\n, \\t, \\r).
+
+    This handles the case where an LLM embeds multi-line code inside
+    a JSON string field without escaping it.
+    """
+    result = []
+    in_string = False
+    escape_next = False
+
+    for ch in text:
+        if escape_next:
+            result.append(ch)
+            escape_next = False
+            continue
+
+        if ch == "\\":
+            result.append(ch)
+            escape_next = True
+            continue
+
+        if ch == '"':
+            in_string = not in_string
+            result.append(ch)
+            continue
+
+        # Inside a string, escape raw control characters
+        if in_string:
+            if ch == "\n":
+                result.append("\\n")
+                continue
+            if ch == "\r":
+                result.append("\\r")
+                continue
+            if ch == "\t":
+                result.append("\\t")
+                continue
+
+        result.append(ch)
+
+    return "".join(result)
