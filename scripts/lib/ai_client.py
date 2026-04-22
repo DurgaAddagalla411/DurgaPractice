@@ -48,11 +48,14 @@ def ask_ai(system_prompt: str, user_message: str, **options) -> str:
     model = options.get("model", os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"))
     max_tokens = options.get("max_tokens", 4096)
     temperature = options.get("temperature", 0)
+    response_format = options.get("response_format")  # e.g. {"type": "json_object"}
 
     log.info(f"Calling Groq model: {model}")
     log.debug(f"System prompt length: {len(system_prompt)} chars")
     log.debug(f"User message length: {len(user_message)} chars")
     log.debug(f"Temperature: {temperature}, Max tokens: {max_tokens}")
+    if response_format:
+        log.debug(f"Response format: {response_format}")
 
     start_time = time.time()
 
@@ -63,15 +66,19 @@ def ask_ai(system_prompt: str, user_message: str, **options) -> str:
         #   - "system" role: Sets the AI's persona
         #   - "user" role: The actual question/task
         # -----------------------------------------------------------
-        response = client.chat.completions.create(
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            messages=[
+        create_kwargs = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-        )
+        }
+        if response_format:
+            create_kwargs["response_format"] = response_format
+
+        response = client.chat.completions.create(**create_kwargs)
 
         # Extract the response text
         text = response.choices[0].message.content
@@ -108,24 +115,24 @@ def ask_ai(system_prompt: str, user_message: str, **options) -> str:
 
 def ask_ai_json(system_prompt: str, user_message: str, **options) -> dict:
     """
-    Same as ask_ai, but parses the response as JSON.
+    Same as ask_ai, but forces Groq to emit valid JSON using native
+    JSON mode (response_format={"type": "json_object"}).
 
-    Automatically:
-    - Adds "return only JSON" instruction to the prompt
-    - Strips markdown code fences from the response
-    - Parses and returns a Python dict
-
-    Returns:
-        dict — Parsed JSON response from the AI
+    Small models (llama-3.1-8b) often emit malformed JSON — unescaped
+    quotes inside code strings, raw newlines, etc. JSON mode makes the
+    model token-level constrained to output only syntactically valid JSON.
     """
-    log.info("Requesting JSON response from AI")
+    log.info("Requesting JSON response from AI (native JSON mode)")
 
-    # Add explicit JSON instruction
     json_system_prompt = (
         system_prompt
-        + "\n\nCRITICAL: Return ONLY raw JSON. No markdown code fences, "
-        "no ```json blocks, no explanation text before or after the JSON."
+        + "\n\nCRITICAL: Respond with a single JSON object. "
+        "No markdown, no code fences, no prose before or after."
     )
+
+    # Use Groq's native JSON mode — forces structurally valid output.
+    # This is the most reliable way to get parseable JSON.
+    options["response_format"] = {"type": "json_object"}
 
     text = ask_ai(json_system_prompt, user_message, **options)
 
