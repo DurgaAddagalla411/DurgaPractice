@@ -38,13 +38,16 @@ addRoute("GET", "/users", (req, res) => {
 
 // -----------------------------------------------------------
 // ROUTE: GET /users/:id — Return a single user by ID
-// (intentional bug: no 404 handling when user not found)
 // -----------------------------------------------------------
 addRoute("GET", "/users/:id", (req, res) => {
   const id = parseInt(req.params.id);
   const user = users.find((u) => u.id === id);
-  // BUG: If user is not found, this sends `undefined` as JSON
-  // which results in an empty response — no error message.
+  if (!user) {
+    // If user is not found, return 404 with an error message
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: false, error: "User not found" }));
+    return;
+  }
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ success: true, data: user }));
 });
