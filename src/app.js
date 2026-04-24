@@ -59,6 +59,16 @@ addRoute("POST", "/users", (req, res) => {
   req.on("end", () => {
     const newUser = JSON.parse(body);
     // GAP: No validation — name, email, role could be missing
+    if (!newUser.name || !newUser.email || !newUser.role) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: false, error: "Missing required fields" }));
+      return;
+    }
+    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(newUser.email)) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: false, error: "Invalid email format" }));
+      return;
+    }
     newUser.id = users.length + 1;
     users.push(newUser);
     res.writeHead(201, { "Content-Type": "application/json" });
