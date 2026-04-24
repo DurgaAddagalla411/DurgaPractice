@@ -1,16 +1,17 @@
 {
   "src/app.js": {
-    "last_reviewed_sha": "babbd107c8cbf65c04816bbcfdf8f6766d816eb9",
-    "review_count": 4,
-    "previous_summary": "This PR adds an uptime field to the /health endpoint response, building on past reviews that addressed similar issues. The changes are incremental and focused on enhancing the API response. The code is well-structured and easy to follow.",
+    "last_reviewed_sha": "8546c296cdb9a8c6bdb59e41102f9f5ba854860e",
+    "review_count": 5,
+    "previous_summary": "This PR adds input validation for POST /users, ensuring required fields [name], [email], and [role] are present and email format is valid. It builds on past reviews that addressed similar issues.",
     "known_concerns": [],
     "verdict": "APPROVE",
-    "last_reviewed_at": "2026-04-21T09:17:03.370503+00:00",
+    "last_reviewed_at": "2026-04-24T08:47:38.390039+00:00",
     "related_prs": [
       2,
       6,
       8,
-      12
+      12,
+      20
     ]
   }
 }

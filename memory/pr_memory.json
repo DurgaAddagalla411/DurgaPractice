@@ -59,5 +59,22 @@
     "risk_level": "low",
     "reviewed_at": "2026-04-21T09:17:03.370913+00:00",
     "head_sha": "babbd107c8cbf65c04816bbcfdf8f6766d816eb9"
+  },
+  "20": {
+    "title": "fix: Add input validation for POST /users",
+    "author": "DurgaAddagalla411",
+    "verdict": "APPROVE",
+    "summary": "This PR adds input validation for POST /users, ensuring required fields [name], [email], and [role] are present and email format is valid. It builds on past reviews that addressed similar issues.",
+    "files_touched": [
+      "src/app.js"
+    ],
+    "related_to_prs": [
+      2,
+      6,
+      8
+    ],
+    "risk_level": "low",
+    "reviewed_at": "2026-04-24T08:47:38.390466+00:00",
+    "head_sha": "8546c296cdb9a8c6bdb59e41102f9f5ba854860e"
   }
 }
