@@ -51,14 +51,19 @@ addRoute("GET", "/users/:id", (req, res) => {
 
 // -----------------------------------------------------------
 // ROUTE: POST /users — Create a new user
-// (intentional gap: no input validation)
 // -----------------------------------------------------------
 addRoute("POST", "/users", (req, res) => {
   let body = "";
   req.on("data", (chunk) => (body += chunk));
   req.on("end", () => {
     const newUser = JSON.parse(body);
-    // GAP: No validation — name, email, role could be missing
+    // Validate the request body
+    if (!newUser.name || newUser.name.trim() === "") {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: false, error: "name is required" }));
+      return;
+    }
+    // GAP: No validation — email, role could be missing
     newUser.id = users.length + 1;
     users.push(newUser);
     res.writeHead(201, { "Content-Type": "application/json" });
